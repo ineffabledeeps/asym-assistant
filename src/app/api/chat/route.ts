@@ -1,6 +1,7 @@
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { fetchWeather, fetchNextF1, fetchStock } from '@/lib/tools';
 
 // Input validation schema
 const chatInputSchema = z.object({
@@ -9,11 +10,6 @@ const chatInputSchema = z.object({
     role: z.enum(['user', 'assistant', 'system']),
     content: z.string(),
   })),
-  tools: z.array(z.object({
-    name: z.string(),
-    description: z.string(),
-    inputSchema: z.any(),
-  })).optional(),
 });
 
 export async function POST(req: Request) {
@@ -31,16 +27,48 @@ export async function POST(req: Request) {
     // Create the AI model instance
     const model = openai('gpt-4o-mini');
 
+
+
     // Prepare the conversation history
     const conversation = messages.map(msg => ({
       role: msg.role,
       content: msg.content,
     }));
 
-    // Stream the AI response
+    // Stream the AI response with tools
     const result = await streamText({
       model,
       messages: conversation,
+      tools: {
+        getWeather: {
+          description: 'Get current weather information for a specific location',
+          inputSchema: z.object({
+            location: z.string().describe('City name, coordinates, or location identifier')
+          }),
+          execute: async ({ location }: { location: string }) => {
+            console.log(`Weather tool called for location: ${location}`);
+            return await fetchWeather(location);
+          }
+        },
+        getF1Matches: {
+          description: 'Get Formula 1 race schedule and match information',
+          inputSchema: z.object({}),
+          execute: async () => {
+            console.log('F1 tool called');
+            return await fetchNextF1();
+          }
+        },
+        getStockPrice: {
+          description: 'Get current stock price and change information for a stock symbol',
+          inputSchema: z.object({
+            symbol: z.string().describe('Stock symbol (e.g., AAPL, GOOGL, MSFT)')
+          }),
+          execute: async ({ symbol }: { symbol: string }) => {
+            console.log(`Stock tool called for symbol: ${symbol}`);
+            return await fetchStock(symbol);
+          }
+        }
+      }
     });
 
     // Create a ReadableStream for streaming response
