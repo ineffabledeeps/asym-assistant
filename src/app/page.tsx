@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import AuthGate from "@/components/AuthGate";
+import Navbar from "@/components/Navbar";
 import Providers from "@/components/Providers";
 
 export default function Home() {
@@ -14,6 +14,7 @@ export default function Home() {
 function HomeContent() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Navbar />
       <div className="max-w-4xl mx-auto p-6">
         <header className="text-center mb-12">
           <Image
@@ -33,12 +34,6 @@ function HomeContent() {
         </header>
 
         <main className="space-y-8">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-              Authentication
-            </h2>
-            <AuthGate />
-          </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">

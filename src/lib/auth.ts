@@ -38,6 +38,7 @@ export default NextAuth({
   },
   debug: process.env.NODE_ENV === "development",
   callbacks: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async jwt({ token, account, profile }: any) {
       if (account?.access_token) {
         token.accessToken = account.access_token;
@@ -47,6 +48,7 @@ export default NextAuth({
       }
       return token;
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     async session({ session, token }: any) {
       if (token && session.user) {
         session.user.id = token.id as string;

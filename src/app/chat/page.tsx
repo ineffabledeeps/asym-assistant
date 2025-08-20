@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import NextAuth from "@/lib/auth";
 import { listChats, getChat, createChat, MessageDTO } from "@/app/actions/chat";
 import ChatPanel from "@/components/ChatPanel";
+import Navbar from "@/components/Navbar";
+import Providers from "@/components/Providers";
 
 interface ChatPageProps {
   searchParams: { chat?: string };
@@ -50,13 +52,16 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <ChatPanel 
-        initialChats={chats} 
-        selectedChatId={selectedChatId}
-        initialMessages={selectedChatMessages}
-        isNewChat={isNewChat}
-      />
-    </div>
+    <Providers>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <Navbar />
+        <ChatPanel 
+          initialChats={chats} 
+          selectedChatId={selectedChatId}
+          initialMessages={selectedChatMessages}
+          isNewChat={isNewChat}
+        />
+      </div>
+    </Providers>
   );
 }
