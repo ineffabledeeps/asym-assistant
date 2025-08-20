@@ -1,65 +1,62 @@
-"use client";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import NextAuth from "@/lib/auth";
+import { listChats, getChat, createChat, MessageDTO } from "@/app/actions/chat";
+import ChatPanel from "@/components/ChatPanel";
 
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import AuthGate from "@/components/AuthGate";
-import Providers from "@/components/Providers";
-
-export default function ChatPage() {
-  return (
-    <Providers>
-      <ChatContent />
-    </Providers>
-  );
+interface ChatPageProps {
+  searchParams: { chat?: string };
 }
 
-function ChatContent() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (status === "loading") return;
-    if (!session?.user) {
-      router.push("/");
-    }
-  }, [session, status, router]);
-
-  if (status === "loading") {
-    return <div>Loading...</div>;
+export default async function ChatPage({ searchParams }: ChatPageProps) {
+  // Server-side authentication check
+  const session = await getServerSession(NextAuth) as { user?: { id: string } } | null;
+  if (!session?.user?.id) {
+    redirect("/");
   }
 
-  if (!session?.user) {
-    return null;
+  // Load user's chat history
+  const chats = await listChats();
+  
+  let selectedChatId: string | null = null;
+  let selectedChatMessages: MessageDTO[] = [];
+  let isNewChat = false;
+
+  // Handle chat selection from search params
+  if (searchParams.chat) {
+    try {
+      const chat = await getChat(searchParams.chat);
+      // getChat already verifies ownership, so if it succeeds, the chat belongs to the user
+      selectedChatId = chat.id;
+      selectedChatMessages = chat.messages || [];
+    } catch (error) {
+      console.error("Failed to load chat:", error);
+      // If chat loading fails, we'll create a new one
+    }
+  }
+
+  // If no chat is selected or loading failed, create a new chat
+  if (!selectedChatId) {
+    try {
+      const newChat = await createChat({ title: "New Chat" });
+      selectedChatId = newChat.id;
+      isNewChat = true;
+      // Don't redirect here - let the client handle the navigation
+      // This prevents infinite redirects
+    } catch (error) {
+      console.error("Failed to create new chat:", error);
+      // Fallback: just show the chat list without a selected chat
+    }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Chat Assistant
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Welcome back, {session.user.name || session.user.email}!
-          </p>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Your Chat
-            </h2>
-            <AuthGate />
-          </div>
-          
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 min-h-[400px] bg-gray-50 dark:bg-gray-900">
-            <p className="text-gray-500 dark:text-gray-400 text-center">
-              Chat interface will be implemented here...
-            </p>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <ChatPanel 
+        initialChats={chats} 
+        selectedChatId={selectedChatId}
+        initialMessages={selectedChatMessages}
+        isNewChat={isNewChat}
+      />
     </div>
   );
 }
