@@ -21,7 +21,7 @@ declare module "next-auth/jwt" {
   }
 }
 
-export const { auth, handlers, signIn, signOut } = NextAuth({
+export default NextAuth({
   providers: [
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID as string,
@@ -32,11 +32,13 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       clientSecret: process.env.AUTH_GOOGLE_SECRET as string,
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
   },
+  debug: process.env.NODE_ENV === "development",
   callbacks: {
-    async jwt({ token, account, profile }) {
+    async jwt({ token, account, profile }: any) {
       if (account?.access_token) {
         token.accessToken = account.access_token;
       }
@@ -45,7 +47,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.accessToken = token.accessToken as string;

@@ -1,12 +1,36 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
-import AuthGate from "@/components/AuthGate";
+"use client";
 
-export default async function ChatPage() {
-  const session = await auth();
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import AuthGate from "@/components/AuthGate";
+import Providers from "@/components/Providers";
+
+export default function ChatPage() {
+  return (
+    <Providers>
+      <ChatContent />
+    </Providers>
+  );
+}
+
+function ChatContent() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "loading") return;
+    if (!session?.user) {
+      router.push("/");
+    }
+  }, [session, status, router]);
+
+  if (status === "loading") {
+    return <div>Loading...</div>;
+  }
 
   if (!session?.user) {
-    redirect("/");
+    return null;
   }
 
   return (

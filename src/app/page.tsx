@@ -1,8 +1,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import AuthGate from "@/components/AuthGate";
+import Providers from "@/components/Providers";
 
 export default function Home() {
+  return (
+    <Providers>
+      <HomeContent />
+    </Providers>
+  );
+}
+
+function HomeContent() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-4xl mx-auto p-6">
@@ -28,7 +37,11 @@ export default function Home() {
             <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
               Authentication
             </h2>
-            <AuthGate />
+            <div className="text-center p-4">
+              <p className="text-gray-600 dark:text-gray-400">
+                AuthGate component temporarily disabled for testing
+              </p>
+            </div>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
