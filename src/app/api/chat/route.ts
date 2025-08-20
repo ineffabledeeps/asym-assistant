@@ -2,6 +2,9 @@ import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 import { fetchWeather, fetchNextF1, fetchStock } from '@/lib/tools';
+import { getServerSession } from 'next-auth';
+import NextAuth from '@/lib/auth';
+import { defaultRateLimiter } from '@/lib/rateLimit';
 
 // Input validation schema
 const chatInputSchema = z.object({
@@ -14,6 +17,39 @@ const chatInputSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    // Check authentication
+    const session = await getServerSession(NextAuth) as { user?: { id: string } } | null;
+    if (!session?.user?.id) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check rate limit
+    const rateLimitResult = await defaultRateLimiter.checkLimit(session.user.id);
+    if (!rateLimitResult.success) {
+      const resetTime = new Date(rateLimitResult.resetTime).toISOString();
+      return new Response(
+        JSON.stringify({ 
+          error: 'Rate limit exceeded',
+          limit: rateLimitResult.limit,
+          resetTime,
+          retryAfter: Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000)
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+            'X-RateLimit-Reset': resetTime,
+            'Retry-After': Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000).toString()
+          } 
+        }
+      );
+    }
+
     const body = await req.json();
     const { messages } = chatInputSchema.parse(body);
 

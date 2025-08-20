@@ -7,6 +7,7 @@ import { createChat, appendMessage } from "@/app/actions/chat";
 import { WeatherCard, RaceCard, PriceCard } from "@/components";
 import { WeatherToolOutput, F1MatchesToolOutput, StockPriceToolOutput } from "@/types/tools";
 import ChatSkeleton from "./ChatSkeleton";
+import toast from "react-hot-toast";
 
 interface ChatPanelProps {
   initialChats: ChatDTO[];
@@ -91,8 +92,10 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
       setMessages([]);
       // Navigate to the new chat
       router.push(`/chat?chat=${newChat.id}`);
+      toast.success("New chat created!");
     } catch (error) {
       console.error("Failed to create chat:", error);
+      toast.error("Failed to create new chat. Please try again.");
     }
   };
 
@@ -119,9 +122,15 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
           timestamp: new Date(msg.createdAt)
         }));
         setMessages(hydratedMessages);
+        if (hydratedMessages.length > 0) {
+          toast.success(`Loaded ${hydratedMessages.length} messages`);
+        }
+      } else {
+        toast.error("Failed to load chat messages");
       }
     } catch (error) {
       console.error("Failed to load chat messages:", error);
+      toast.error("Failed to load chat messages. Please try again.");
     }
     
     router.push(`/chat?chat=${chatId}`);
@@ -162,7 +171,14 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 429) {
+          const rateLimitData = await response.json();
+          throw new Error(`Rate limit exceeded. Please wait ${rateLimitData.retryAfter} seconds before trying again.`);
+        } else if (response.status === 401) {
+          throw new Error("Authentication required. Please sign in again.");
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
       }
 
       const reader = response.body?.getReader();
@@ -278,12 +294,17 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
             }
           });
         }
+        
+        toast.success("Message saved successfully");
       } catch (error) {
         console.error("Failed to persist messages:", error);
+        toast.error("Failed to save message. Your conversation may not be preserved.");
       }
 
     } catch (error) {
       console.error("Error:", error);
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      toast.error(errorMessage);
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'assistant',
@@ -360,11 +381,19 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
           </div>
           
           <div className="flex-1 overflow-y-auto p-4">
-            {chats.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                No chats yet. Start a new conversation!
+                      {chats.length === 0 ? (
+            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+              <div className="mb-4">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
               </div>
-            ) : (
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">No conversations yet</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Start your first conversation by clicking the &quot;New Chat&quot; button above.
+              </p>
+            </div>
+          ) : (
               <div className="space-y-2">
                 {chats.map((chat) => (
                   <button
@@ -412,9 +441,32 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 && currentChatId ? (
+          {!currentChatId ? (
             <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-              Start a conversation by typing a message below.
+              <div className="mb-4">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Select a chat</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Choose a conversation from the sidebar or create a new one to get started.
+              </p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+              <div className="mb-4">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Start a conversation</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Type your message below to begin chatting with the AI assistant.
+              </p>
+              <div className="text-xs text-gray-400 dark:text-gray-500">
+                You can ask about weather, F1 races, stock prices, or anything else!
+              </div>
             </div>
           ) : (
             messages.map((message) => (
@@ -469,18 +521,33 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Type your message..."
-              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              placeholder={currentChatId ? "Type your message..." : 'Select a chat to start messaging'}
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50"
               disabled={isLoading || !currentChatId}
             />
             <button
               onClick={sendMessage}
               disabled={isLoading || !input.trim() || !currentChatId}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
             >
-              {isLoading ? "Sending..." : "Send"}
+              {isLoading ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span>Sending...</span>
+                </>
+              ) : (
+                <span>Send</span>
+              )}
             </button>
           </div>
+          {isLoading && (
+            <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
+              Processing your message...
+            </div>
+          )}
         </div>
       </div>
     </div>
