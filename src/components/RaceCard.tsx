@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { F1MatchesToolOutput } from "@/types/tools";
+import { F1MatchesToolOutput } from "@/lib/schemas";
 import { Flag, MapPin, Calendar, Clock } from "lucide-react";
 
 interface RaceCardProps {

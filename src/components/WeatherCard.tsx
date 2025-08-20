@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { WeatherToolOutput } from "@/types/tools";
+import { WeatherToolOutput } from "@/lib/schemas";
 import { Cloud, Droplets, Wind } from "lucide-react";
 
 interface WeatherCardProps {

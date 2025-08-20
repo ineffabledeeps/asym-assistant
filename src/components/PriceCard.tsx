@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StockPriceToolOutput } from "@/types/tools";
+import { StockPriceToolOutput } from "@/lib/schemas";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 interface PriceCardProps {

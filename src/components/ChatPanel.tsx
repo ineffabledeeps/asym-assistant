@@ -2,10 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChatDTO } from "@/app/actions/chat";
 import { createChat, appendMessage } from "@/app/actions/chat";
+import { ChatDTO, WeatherToolOutput, F1MatchesToolOutput, StockPriceToolOutput } from "@/lib/schemas";
 import { WeatherCard, RaceCard, PriceCard } from "@/components";
-import { WeatherToolOutput, F1MatchesToolOutput, StockPriceToolOutput } from "@/types/tools";
 import ChatSkeleton from "./ChatSkeleton";
 import toast from "react-hot-toast";
 

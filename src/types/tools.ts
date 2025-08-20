@@ -1,37 +1,16 @@
 // Tool input/output types for AI assistant tools
+import type { 
+  WeatherToolOutput,
+  F1MatchesToolOutput, 
+  StockPriceToolOutput 
+} from '@/lib/schemas';
 
 export interface WeatherToolInput {
   location: string;
 }
 
-export interface WeatherToolOutput {
-  location: string;
-  tempC: number;
-  description: string;
-  icon: string;
-  humidity: number;
-  windKph: number;
-}
-
-export interface F1MatchesToolOutput {
-  season: string;
-  round: number;
-  raceName: string;
-  circuit: string;
-  country: string;
-  date: string;
-  time?: string;
-}
-
 export interface StockPriceToolInput {
   symbol: string;
-}
-
-export interface StockPriceToolOutput {
-  symbol: string;
-  price: number;
-  change?: number;
-  changePercent?: number;
 }
 
 // Union type for all tool outputs

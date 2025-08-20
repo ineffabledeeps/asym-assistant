@@ -2,7 +2,7 @@ import {
   WeatherToolOutput, 
   F1MatchesToolOutput, 
   StockPriceToolOutput 
-} from "@/types/tools";
+} from "@/lib/schemas";
 
 // OpenWeatherMap API
 export async function fetchWeather(location: string): Promise<WeatherToolOutput> {
