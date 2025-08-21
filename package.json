@@ -22,7 +22,9 @@
     "db:ts:generate": "npx tsx scripts/db.ts generate",
     "db:ts:migrate": "npx tsx scripts/db.ts migrate",
     "db:ts:studio": "npx tsx scripts/db.ts studio",
-    "env:check": "node scripts/env-check.js"
+    "env:check": "node scripts/env-check.js",
+    "db:migrate:ssl": "node scripts/migrate-with-ssl.js",
+    "db:migrate:custom": "node scripts/migrate-custom.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.7",
