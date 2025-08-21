@@ -59,11 +59,18 @@ GOOGLE_GENERATIVE_AI_API_KEY="your-api-key"
 The following npm scripts are available for convenience:
 
 - `npm run db:check` - Check database connection
-- `npm run db:push` - Push schema to database
+- `npm run db:generate` - Generate new migration files
+- `npm run db:migrate` - Run pending migrations (with SSL bypass)
+- `npm run db:studio` - Open Drizzle Studio
+- `npm run db:push` - Push schema to database (development)
 - `npm run db:drop` - Drop all tables (with confirmation)
 - `npm run db:ts:check` - TypeScript version of check
+- `npm run db:ts:generate` - TypeScript version of generate
+- `npm run db:ts:migrate` - TypeScript version of migrate
+- `npm run db:ts:studio` - TypeScript version of studio
 - `npm run db:ts:push` - TypeScript version of push
 - `npm run db:ts:drop` - TypeScript version of drop
+- `npm run env:check` - Check environment configuration
 
 ## Safety Features
 

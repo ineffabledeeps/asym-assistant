@@ -63,9 +63,17 @@ function checkEnvironment() {
 function runDrizzleCommand(command, description) {
   try {
     logInfo(`Running: ${description}`);
+    
+    // Set environment variable to disable SSL verification for database operations
+    const env = {
+      ...process.env,
+      NODE_TLS_REJECT_UNAUTHORIZED: '0'
+    };
+    
     const result = execSync(`npx drizzle-kit ${command}`, { 
       stdio: 'inherit',
-      cwd: process.cwd()
+      cwd: process.cwd(),
+      env: env
     });
     logSuccess(`${description} completed successfully`);
     return true;

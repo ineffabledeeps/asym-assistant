@@ -10,15 +10,19 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio",
+    "db:generate": "node scripts/db.js generate",
+    "db:migrate": "node scripts/db.js migrate",
+    "db:studio": "node scripts/db.js studio",
     "db:check": "node scripts/db.js check",
     "db:push": "node scripts/db.js push",
     "db:drop": "node scripts/db.js drop",
     "db:ts:check": "npx tsx scripts/db.ts check",
     "db:ts:push": "npx tsx scripts/db.ts push",
-    "db:ts:drop": "npx tsx scripts/db.ts drop"
+    "db:ts:drop": "npx tsx scripts/db.ts drop",
+    "db:ts:generate": "npx tsx scripts/db.ts generate",
+    "db:ts:migrate": "npx tsx scripts/db.ts migrate",
+    "db:ts:studio": "npx tsx scripts/db.ts studio",
+    "env:check": "node scripts/env-check.js"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.7",
