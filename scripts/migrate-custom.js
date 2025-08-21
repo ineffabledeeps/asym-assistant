@@ -127,10 +127,39 @@ function runSqlDirectly() {
   try {
     logInfo('Attempting to run migration SQL directly...');
     
-    // Read the migration file
-    const migrationPath = path.join(process.cwd(), 'drizzle', '0000_narrow_inhumans.sql');
-    if (!fs.existsSync(migrationPath)) {
-      logError('Migration file not found');
+    // Debug: Show current working directory and available files
+    logInfo(`Current working directory: ${process.cwd()}`);
+    logInfo(`Script directory: ${__dirname}`);
+    
+    // Check what's in the drizzle directory
+    const drizzleDir = path.join(process.cwd(), 'drizzle');
+    if (fs.existsSync(drizzleDir)) {
+      logInfo('Contents of drizzle directory:');
+      const files = fs.readdirSync(drizzleDir);
+      files.forEach(file => logInfo(`  - ${file}`));
+    } else {
+      logWarning('drizzle directory not found at current working directory');
+    }
+    
+    // Read the migration file - try multiple possible paths
+    const possiblePaths = [
+      path.join(process.cwd(), 'drizzle', '0000_narrow_inhumans.sql'),
+      path.join(__dirname, '..', 'drizzle', '0000_narrow_inhumans.sql'),
+      './drizzle/0000_narrow_inhumans.sql'
+    ];
+    
+    let migrationPath = null;
+    for (const testPath of possiblePaths) {
+      if (fs.existsSync(testPath)) {
+        migrationPath = testPath;
+        logInfo(`Found migration file at: ${testPath}`);
+        break;
+      }
+    }
+    
+    if (!migrationPath) {
+      logError('Migration file not found. Tried these paths:');
+      possiblePaths.forEach(p => logInfo(`  - ${p}`));
       return false;
     }
     
