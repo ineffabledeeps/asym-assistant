@@ -18,7 +18,7 @@ const envSchema = z.object({
 
   // AI provider (at least one should be provided)
   OPENAI_API_KEY: z.string().min(1).optional(),
-  GEMINI_API_KEY: z.string().min(1).optional(),
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
 
   // Tools
@@ -38,7 +38,7 @@ const processEnv = {
   AUTH_GITHUB_SECRET: process.env.AUTH_GITHUB_SECRET,
   DATABASE_URL: process.env.DATABASE_URL,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   OPENWEATHER_API_KEY: process.env.OPENWEATHER_API_KEY,
   ALPHAVANTAGE_API_KEY: process.env.ALPHAVANTAGE_API_KEY,

@@ -1,10 +1,17 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 import { eq } from "drizzle-orm";
 
-// Database connection
-const sql = neon(process.env.DATABASE_URL!);
+// Database connection for Supabase/PostgreSQL
+const connectionString = process.env.DATABASE_URL!;
+
+// SSL configuration for Supabase (recommended approach)
+const sslConfig = {
+  rejectUnauthorized: false, // Allow self-signed certificates for Supabase
+};
+
+const sql = postgres(connectionString, { ssl: sslConfig });
 export const db = drizzle(sql, { schema });
 
 // Helper functions

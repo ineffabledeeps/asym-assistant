@@ -41,6 +41,28 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Configuration for summary + recent messages approach
+  const SUMMARY_CONFIG = {
+    maxRecentMessages: 5,
+    enableSummary: true,
+    minMessagesForSummary: 8, // Only generate summary if we have more than this many messages
+  };
+
+  // System prompt configuration - defines AI behavior and boundaries
+  const SYSTEM_PROMPT = `You are a helpful AI assistant with access to real-time tools. You can:
+
+1. Get current weather information for any location using the getWeather tool
+2. Get Formula 1 race schedules and information using the getF1Matches tool  
+3. Get current stock prices using the getStockPrice tool
+
+When users ask about weather, F1 races, or stock prices, ALWAYS use the appropriate tool first, then provide a helpful response based on the tool results.
+
+For weather questions: Use getWeather tool, then describe the current conditions
+For F1 questions: Use getF1Matches tool, then explain the race information
+For stock questions: Use getStockPrice tool, then analyze the price data
+
+Be conversational and helpful in your responses.`;
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -135,6 +157,81 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
     router.push(`/chat?chat=${chatId}`);
   };
 
+  // Generate conversation summary from older messages
+  const generateConversationSummary = (messages: ChatMessage[]): string => {
+    if (!SUMMARY_CONFIG.enableSummary || messages.length <= SUMMARY_CONFIG.minMessagesForSummary) {
+      return "";
+    }
+
+    const olderMessages = messages.slice(0, -SUMMARY_CONFIG.maxRecentMessages);
+    const userMessages = olderMessages.filter(msg => msg.role === 'user');
+    
+    if (userMessages.length === 0) {
+      return "";
+    }
+
+    // Extract key topics from user messages
+    const topics = userMessages.map(msg => {
+      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+      return content.toLowerCase();
+    });
+
+    // Identify common themes with more sophisticated detection
+    const themes: string[] = [];
+    if (topics.some(topic => topic.includes('weather') || topic.includes('temperature') || topic.includes('humidity') || topic.includes('forecast'))) {
+      themes.push('weather information');
+    }
+    if (topics.some(topic => topic.includes('f1') || topic.includes('race') || topic.includes('circuit') || topic.includes('formula') || topic.includes('grand prix'))) {
+      themes.push('Formula 1 racing');
+    }
+    if (topics.some(topic => topic.includes('stock') || topic.includes('price') || topic.includes('market') || topic.includes('trading') || topic.includes('investment'))) {
+      themes.push('stock market data');
+    }
+    if (topics.some(topic => topic.includes('general') || topic.includes('help') || topic.includes('question') || topic.includes('explain') || topic.includes('what is'))) {
+      themes.push('general questions');
+    }
+
+    if (themes.length === 0) {
+      themes.push('various topics');
+    }
+
+    const summary = `Previous conversation covered: ${themes.join(', ')}. The user has asked ${userMessages.length} questions about these topics.`;
+    return summary;
+  };
+
+  // Prepare messages for API with system prompt + summary + recent messages
+  const prepareMessagesForAPI = (messages: ChatMessage[], newUserMessage: string) => {
+    const recentMessages = messages.slice(-SUMMARY_CONFIG.maxRecentMessages);
+    const summary = generateConversationSummary(messages);
+    
+    const apiMessages = [];
+    
+    // Always add system prompt first to define AI behavior and boundaries
+    apiMessages.push({
+      role: 'system' as const,
+      content: SYSTEM_PROMPT
+    });
+    
+    // Add conversation summary if we have one
+    if (summary) {
+      apiMessages.push({
+        role: 'user' as const,
+        content: `[Previous conversation context: ${summary}]`
+      });
+    }
+    
+    // Add recent messages
+    apiMessages.push(...recentMessages.map(msg => ({
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    })));
+    
+    // Add the new user message
+    apiMessages.push({ role: 'user' as const, content: newUserMessage });
+    
+    return apiMessages;
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading || !currentChatId) return;
 
@@ -152,6 +249,26 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
     setStreamingContent("");
 
     try {
+      // Prepare messages with summary + recent context
+      const apiMessages = prepareMessagesForAPI(messages, input.trim());
+      
+      const systemMessages = apiMessages.filter(msg => msg.role === 'system');
+      const hasSystemPrompt = systemMessages.some(msg => !msg.content.startsWith('[Previous conversation context:'));
+      const hasSummary = apiMessages.some(msg => msg.role === 'user' && msg.content.startsWith('[Previous conversation context:'));
+      const recentMessagesCount = apiMessages.filter(msg => msg.role !== 'system' && !msg.content.startsWith('[Previous conversation context:')).length - 1; // -1 for new user message
+      const apiPayloadSize = JSON.stringify(apiMessages).length;
+
+      // Show info to user about what's being sent
+      if (hasSystemPrompt && hasSummary) {
+        toast.success(`Using system prompt + conversation summary + ${recentMessagesCount} recent messages`);
+      } else if (hasSystemPrompt) {
+        toast.success(`Using system prompt + ${recentMessagesCount} recent messages`);
+      } else if (hasSummary) {
+        toast.success(`Using conversation summary + ${recentMessagesCount} recent messages`);
+      } else {
+        toast.success(`Using ${recentMessagesCount} recent messages`);
+      }
+
       // Send message to API
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -159,13 +276,7 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: [
-            ...messages.map(msg => ({
-              role: msg.role,
-              content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-            })),
-            { role: 'user', content: input.trim() }
-          ]
+          messages: apiMessages
         }),
       });
 
@@ -178,8 +289,8 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
         } else {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-      }
-
+            }
+      
       const reader = response.body?.getReader();
       if (!reader) {
         throw new Error("No response body");
@@ -203,10 +314,8 @@ export default function ChatPanel({ initialChats, selectedChatId, initialMessage
               if (data.type === 'text-delta') {
                 fullContent += data.delta;
                 setStreamingContent(fullContent);
-              } else if (data.type === 'done') {
-                console.log('Final usage:', data.usage);
               }
-            } catch {
+            } catch (error) {
               // Skip invalid JSON lines
             }
           }

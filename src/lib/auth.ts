@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions } from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 
@@ -21,15 +21,12 @@ declare module "next-auth/jwt" {
   }
 }
 
-
-
-export default NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     GitHub({
       clientId: process.env.AUTH_GITHUB_ID as string,
       clientSecret: process.env.AUTH_GITHUB_SECRET as string,
       profile(profile) {
-        console.log("git login profile :", profile)
         return {
           id: profile.id.toString(),
           name: profile.name || profile.login,
@@ -42,7 +39,6 @@ export default NextAuth({
       clientId: process.env.AUTH_GOOGLE_ID as string,
       clientSecret: process.env.AUTH_GOOGLE_SECRET as string,
       profile(profile) {
-        console.log("google login profile :", profile)
         return {
           id: profile.sub,
           name: profile.name,
@@ -197,6 +193,8 @@ export default NextAuth({
       };
       
       return finalSession;
-    },
-  },
-});
+         },
+   },
+};
+
+export default NextAuth(authOptions);

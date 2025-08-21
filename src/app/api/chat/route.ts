@@ -1,16 +1,16 @@
 import { streamText } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import { z } from 'zod';
 import { fetchWeather, fetchNextF1, fetchStock } from '@/lib/tools';
 import { getServerSession } from 'next-auth';
-import NextAuth from '@/lib/auth';
+import { authOptions } from '@/lib/auth';
 import { defaultRateLimiter } from '@/lib/rateLimit';
 
 // Input validation schema
 const chatInputSchema = z.object({
   messages: z.array(z.object({
     id: z.string().optional(),
-    role: z.enum(['user', 'assistant', 'system']),
+    role: z.enum(['user', 'assistant', 'system', 'tool']),
     content: z.string(),
   })),
 });
@@ -18,7 +18,7 @@ const chatInputSchema = z.object({
 export async function POST(req: Request) {
   try {
     // Check authentication
-    const session = await getServerSession(NextAuth) as { user?: { id: string } } | null;
+    const session = await getServerSession(authOptions) as { user?: { id: string } } | null;
     if (!session?.user?.id) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -51,6 +51,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    
     const { messages } = chatInputSchema.parse(body);
 
     // Get the last user message
@@ -61,64 +62,135 @@ export async function POST(req: Request) {
     }
 
     // Create the AI model instance
-    const model = openai('gpt-4o-mini');
+    const model = google('gemini-1.5-flash');
 
 
 
-    // Prepare the conversation history
+    // Use the messages directly from the frontend (including system prompt if provided)
     const conversation = messages.map(msg => ({
-      role: msg.role,
+      role: msg.role as 'user' | 'assistant' | 'system',
       content: msg.content,
     }));
 
-    // Stream the AI response with tools
+    // Enhanced system prompt to force tool usage and improve responses
+    const enhancedSystemPrompt = {
+      role: 'system' as const,
+      content: `You are a helpful AI assistant with access to real-time tools. You MUST follow these rules:
+
+1. ALWAYS use tools when asked about weather, F1 races, or stock prices
+2. NEVER respond to these topics without using the appropriate tool first
+3. After using a tool, provide a helpful, conversational response based on the tool results
+4. Ask follow-up questions to engage the user and provide more value
+5. Be conversational, friendly, and helpful
+
+Available tools:
+- getWeather: For weather information (temperature, humidity, wind, conditions)
+- getF1Matches: For Formula 1 race schedules and information  
+- getStockPrice: For current stock prices and market data
+
+Example: If someone asks "What's the weather in London?", you MUST call getWeather("London") first, then respond with the data and ask follow-up questions like "Would you like to know the forecast for tomorrow?" or "Is there anything specific about the weather you'd like to know?"`
+    };
+
+    // Add enhanced system prompt to conversation
+    const enhancedConversation = [enhancedSystemPrompt, ...conversation];
+
+    // Log the conversation being sent to Gemini
+    console.log('🔍 Sending to Gemini:', {
+      totalMessages: enhancedConversation.length,
+      systemPrompt: enhancedSystemPrompt.content.substring(0, 100) + '...',
+      userMessages: enhancedConversation.filter(msg => msg.role === 'user').length,
+      lastUserMessage: enhancedConversation[enhancedConversation.length - 1]?.content
+    });
+
+    // Use the correct AI SDK approach for Gemini with tools
     const result = await streamText({
       model,
-      messages: conversation,
+      messages: enhancedConversation,
       tools: {
         getWeather: {
-          description: 'Get current weather information for a specific location',
+          description: 'CRITICAL: You MUST use this tool for ANY weather-related questions. This includes questions about temperature, humidity, wind, weather conditions, climate, or any location-specific weather information. NEVER respond about weather without using this tool first.',
           inputSchema: z.object({
-            location: z.string().describe('City name, coordinates, or location identifier')
+            location: z.string().describe('City name, coordinates, or location identifier (e.g., "Pune", "London", "New York")')
           }),
           execute: async ({ location }: { location: string }) => {
-            console.log(`Weather tool called for location: ${location}`);
-            return await fetchWeather(location);
+            try {
+              console.log(`🔧 Weather tool called for location: ${location}`);
+              const weatherData = await fetchWeather(location);
+              console.log(`🔧 Weather tool result:`, weatherData);
+              return weatherData;
+            } catch (error) {
+              console.error(`🔧 Weather tool error:`, error);
+              return { error: `Failed to fetch weather for ${location}: ${error instanceof Error ? error.message : 'Unknown error'}` };
+            }
           }
         },
         getF1Matches: {
-          description: 'Get Formula 1 race schedule and match information',
+          description: 'CRITICAL: You MUST use this tool for ANY Formula 1 related questions. This includes questions about F1 races, Grand Prix, racing schedule, drivers, circuits, or any Formula 1 information. NEVER respond about F1 without using this tool first.',
           inputSchema: z.object({}),
           execute: async () => {
-            console.log('F1 tool called');
-            return await fetchNextF1();
+            try {
+              console.log(`🔧 F1 tool called`);
+              const f1Data = await fetchNextF1();
+              console.log(`🔧 F1 tool result:`, f1Data);
+              return f1Data;
+            } catch (error) {
+              console.error(`🔧 F1 tool error:`, error);
+              return { error: `Failed to fetch F1 data: ${error instanceof Error ? error.message : 'Unknown error'}` };
+            }
           }
         },
         getStockPrice: {
-          description: 'Get current stock price and change information for a stock symbol',
+          description: 'CRITICAL: You MUST use this tool for ANY stock-related questions. This includes questions about stock prices, market data, company stocks, investments, or any financial information. NEVER respond about stocks without using this tool first.',
           inputSchema: z.object({
-            symbol: z.string().describe('Stock symbol (e.g., AAPL, GOOGL, MSFT)')
+            symbol: z.string().describe('Stock symbol (e.g., AAPL, GOOGL, MSFT, TSLA)')
           }),
           execute: async ({ symbol }: { symbol: string }) => {
-            console.log(`Stock tool called for symbol: ${symbol}`);
-            return await fetchStock(symbol);
+            try {
+              console.log(`🔧 Stock tool called for symbol: ${symbol}`);
+              const stockData = await fetchStock(symbol);
+              console.log(`🔧 Stock tool result:`, stockData);
+              return stockData;
+            } catch (error) {
+              console.error(`🔧 Stock tool error:`, error);
+              return { error: `Failed to fetch stock data for ${symbol}: ${error instanceof Error ? error.message : 'Unknown error'}` };
+            }
           }
         }
       }
     });
 
+    // Log the result from Gemini
+    console.log('🔍 Gemini result:', {
+      hasTextStream: !!result.textStream,
+      usage: result.usage,
+      toolCalls: result.toolCalls || 'None'
+    });
+    
     // Create a ReadableStream for streaming response
     const stream = new ReadableStream({
       async start(controller) {
         try {
+          let deltaCount = 0;
+          
           // Stream the text content
           for await (const delta of result.textStream) {
+            deltaCount++;
             const chunk = `data: ${JSON.stringify({
               type: 'text-delta',
               delta: delta,
               usage: result.usage,
             })}\n\n`;
             controller.enqueue(new TextEncoder().encode(chunk));
+          }
+
+          // If no text was streamed, send a fallback response
+          if (deltaCount === 0) {
+            const fallbackChunk = `data: ${JSON.stringify({
+              type: 'text-delta',
+              delta: "I'm processing your request. Let me gather the information you need and I'll be back with a detailed response and some follow-up questions to help you further!",
+              usage: result.usage,
+            })}\n\n`;
+            controller.enqueue(new TextEncoder().encode(fallbackChunk));
           }
 
           // Send final usage data

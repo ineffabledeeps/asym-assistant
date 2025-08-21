@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import NextAuth from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 import { getChat } from "@/app/actions/chat";
 
 export async function GET(
@@ -9,7 +9,7 @@ export async function GET(
 ) {
   try {
     // Verify authentication
-    const session = await getServerSession(NextAuth) as { user?: { id: string } } | null;
+    const session = await getServerSession(authOptions) as { user?: { id: string } } | null;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
